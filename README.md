@@ -4,6 +4,8 @@
 
 ### Remake any website. Then make it yours.
 
+By [Ruben Hassid](https://ruben.substack.com), from the newsletter [How to AI](https://ruben.substack.com).
+
 One line in Claude Code turns a URL into a copy that matches the original on every screen, puts it live on **your** GitHub and **your** Vercel behind a passcode, and hands you a swap board of every text, photo, video, font and logo to replace so the site becomes yours.
 
 </div>
@@ -132,4 +134,12 @@ Good uses: learning how a site is built, moving your own site off an old platfor
 
 Ideas, not code, from projects that came first: [ai-website-cloner-template](https://github.com/JCodesMore/ai-website-cloner-template) (observe before you build), [dittu](https://github.com/Manish-Tamang/dittu) (copy what the browser rendered, keep the original CSS), [Perfect-Web-Clone](https://github.com/ericshang98/Perfect-Web-Clone) (pass/fail gates), [claude-skill-web-clone](https://github.com/Jane-xiaoer/claude-skill-web-clone) (find the source first, keep the look and swap the content) and [rea](https://github.com/morluto/rea) (source maps, evidence for every finding).
 
-Made by Ruben Hassid from the newsletter [How to AI](https://ruben.substack.com). MIT licence. How it works in detail: [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
+MIT licence. How it works in detail: [docs/HOW-IT-WORKS.md](docs/HOW-IT-WORKS.md).
+
+## Who made this
+
+Remake is made by Ruben Hassid, who writes [How to AI](https://ruben.substack.com), a newsletter that shows you, click by click, how to use AI at work. Every issue tests a tool on screen and gives away what it builds, like this one.
+
+[Substack](https://ruben.substack.com) · [LinkedIn](https://www.linkedin.com/in/ruben-hassid) · [X](https://x.com/rubenhassid)
+
+If Remake saved you a week, [subscribe](https://ruben.substack.com) for the next tool.

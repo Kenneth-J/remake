@@ -72,7 +72,7 @@ section{display:grid;gap:14px}
 const SLIDER_JS = `document.querySelectorAll('.cmp input').forEach(function(i){i.addEventListener('input',function(){i.parentElement.style.setProperty('--x',i.value+'%')})});`;
 
 function shell(title, body, script = "") {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>${esc(title)}</title><style>${CSS}</style></head><body><div class="wrap">${body}</div>${script ? `<script>${script}</script>` : ""}</body></html>`;
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>${esc(title)}</title><style>${CSS}</style></head><body><div class="wrap">${body}<p class="muted" style="margin-top:48px;font-size:13px">Made with <a href="https://github.com/rubenhassid1/remake">Remake</a>, by <a href="https://ruben.substack.com">Ruben Hassid</a> · How to AI</p></div>${script ? `<script>${script}</script>` : ""}</body></html>`;
 }
 
 async function toJpeg(page, pngFile, maxWidth) {

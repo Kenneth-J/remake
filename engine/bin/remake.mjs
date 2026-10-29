@@ -31,7 +31,9 @@ const HELP = `remake ${VERSION}: remake any website, pixel for pixel, then make 
   remake report                  every gate in one table; ends with REMAKE COMPLETE or what's left
   remake status                  where this project stands and the next command
 
-Run any command from inside the project folder, or pass --dir <folder>.`;
+Run any command from inside the project folder, or pass --dir <folder>.
+
+Made by Ruben Hassid · How to AI: https://ruben.substack.com`;
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
