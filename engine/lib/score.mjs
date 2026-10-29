@@ -85,9 +85,10 @@ export async function score(project, opts = {}) {
           }
           const B = decode(frame.png);
           const c = compare(A, B, noise);
-          const file = path.join(p.scoreDir, `${id}-${vpName}-${n}.png`);
+          const label = String(i + 1).padStart(2, "0"); // same number as "screen N" in the score
+          const file = path.join(p.scoreDir, `${id}-${vpName}-${label}.png`);
           fs.writeFileSync(file, strip(A, B, diffImage(B, c.diff, noise)));
-          fs.writeFileSync(path.join(p.scoreDir, `${id}-${vpName}-${n}.remake.png`), frame.png);
+          fs.writeFileSync(path.join(p.scoreDir, `${id}-${vpName}-${label}.remake.png`), frame.png);
           screensOut.push({
             i,
             y: meta.targets?.[i],
@@ -122,7 +123,7 @@ export async function score(project, opts = {}) {
         const B = decode(remake.frames[i].png);
         const c = compare(A, B, noise);
         if (i % 4 === 0 || c.score < cfg.thresholds.motion) {
-          fs.writeFileSync(path.join(p.scoreDir, `motion-${n}.png`), strip(A, B, diffImage(B, c.diff, noise)));
+          fs.writeFileSync(path.join(p.scoreDir, `motion-${String(i + 1).padStart(2, "0")}.png`), strip(A, B, diffImage(B, c.diff, noise)));
         }
         frames.push({ i, score: Math.round(c.score * 100) / 100, noise: Math.round(c.maskedPct * 10) / 10 });
       }
@@ -177,7 +178,7 @@ export function printScore(result, cfg) {
   }
   say("\n" + table(rows));
   const v = verdict(result, cfg);
-  say(`\nPass mark: every screen ≥ ${cfg.thresholds.screen}%, every motion frame ≥ ${cfg.thresholds.motion}%, heights equal.`);
+  say(`\nPass mark: every screen ≥ ${cfg.thresholds.screen}%, every motion frame ≥ ${cfg.thresholds.motion}%, page heights within 4 px.`);
   if (v.pass) say("SCORE: PASS");
   else {
     say(`SCORE: NOT YET (${v.failing.length} to fix)`);

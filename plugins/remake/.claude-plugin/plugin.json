@@ -3,7 +3,7 @@
   "displayName": "Remake",
   "version": "0.1.0",
   "description": "Remake any website pixel for pixel, ship it privately to your GitHub and Vercel, then make it yours.",
-  "author": { "name": "Ruben Hassid (How to AI)" },
+  "author": { "name": "Ruben Hassid from the newsletter How to AI", "url": "https://ruben.substack.com" },
   "homepage": "https://github.com/rubenhassid1/remake",
   "repository": "https://github.com/rubenhassid1/remake",
   "license": "MIT",

@@ -4,7 +4,7 @@
   "description": "Remake any website pixel for pixel with Claude Code, ship it to your GitHub and Vercel, then make it yours.",
   "type": "module",
   "license": "MIT",
-  "author": "Ruben Hassid (How to AI)",
+  "author": "Ruben Hassid from the newsletter How to AI (https://ruben.substack.com)",
   "homepage": "https://github.com/rubenhassid1/remake",
   "repository": "github:rubenhassid1/remake",
   "bin": { "remake": "engine/bin/remake.mjs" },

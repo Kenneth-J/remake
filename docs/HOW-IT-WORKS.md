@@ -44,7 +44,7 @@ For each page and viewport, the original is recorded twice. Pixels that differ b
 
 Then the remake is loaded the same way and compared screen by screen. A pixel counts as different when any colour channel is off by more than 24 of 255. The score is the share of unmasked pixels that match.
 
-Pass mark: every screen at 98% or more, at desktop and phone, page heights within 4 px, and every one of 24 motion frames (small scroll steps with only 120 ms of page time between them, to catch animations mid-flight) at 95% or more.
+Pass mark: every screen at 98% or more, at desktop and phone, page heights within 4 px, and every one of 24 motion frames (small scroll steps with about 150 ms of page time between them, to catch animations mid-flight) at 95% or more.
 
 Original screens are cached in `remake/original/`, so re-scoring after a fix only loads the remake.
 

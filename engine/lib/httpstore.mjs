@@ -161,7 +161,7 @@ export async function attachStore(context, store, { onDocument, archive } = {}) 
 // For files the visit never asked for (other image sizes, unused font weights, source maps):
 // one request at a time per host, a pause between each, and the Internet Archive if the site says no.
 export class Polite {
-  constructor(store, { interval = 1.2, archive = true, log = () => {} } = {}) {
+  constructor(store, { interval = 1.2, archive = false, log = () => {} } = {}) {
     this.store = store;
     this.interval = interval * 1000;
     this.archive = archive;
@@ -241,7 +241,7 @@ export class Polite {
     this.fails.set(host, n);
     if (n >= 2 && !this.store.blocked.has(host)) {
       this.store.blocked.add(host);
-      this.log(`${host} stopped answering (${why}). No more requests to it; using the Internet Archive instead.`);
+      this.log(`${host} stopped answering (${why}). No more requests to it${this.archive ? "; using the Internet Archive instead" : ". Ask the user before trying `remake capture --archive`"}.`);
     }
   }
 

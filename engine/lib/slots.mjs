@@ -535,7 +535,7 @@ export async function apply(project, opts = {}) {
   step(`Applying ${todo.length} swaps`);
   // Keep the last score of the untouched remake: after swaps, it no longer looks like the original, on purpose.
   const baseline = path.join(p.work, "score-before-swaps.json");
-  if (!fs.existsSync(baseline) && fs.existsSync(p.score)) fs.copyFileSync(p.score, baseline);
+  if (!fs.existsSync(baseline) && readJson(p.score)?.pass) fs.copyFileSync(p.score, baseline);
   const fileCache = new Map();
   const read = (rel) => {
     const abs = path.join(project.root, rel);

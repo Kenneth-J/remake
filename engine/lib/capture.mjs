@@ -42,6 +42,8 @@ export function localPath(url, contentType, cfg, taken = new Map()) {
     p = decodeURIComponent(p);
   } catch {}
   p = p.replace(/\/{2,}/g, "/").replace(/[<>:"|*]/g, "_");
+  // Drop "." and ".." segments (an encoded %2F..%2F would otherwise climb out of site/).
+  p = "/" + p.split("/").filter((s) => s && s !== "." && s !== "..").join("/") + (p.endsWith("/") ? "/" : "");
   const isHtml = contentType === "text/html";
   if (p.endsWith("/")) p += isHtml ? "index.html" : "index";
   let ext = path.extname(p).toLowerCase();
@@ -249,7 +251,7 @@ function escapeRe(s) {
 export async function capture(project, opts = {}) {
   const { cfg, p, save } = project;
   const store = new HttpStore(p.cache);
-  const polite = new Polite(store, { interval: cfg.politeInterval, log: (m) => warn(m) });
+  const polite = new Polite(store, { interval: cfg.politeInterval, archive: cfg.captureMode === "archive", log: (m) => warn(m) });
   const archive = !!opts.archive;
   const browser = await launch();
   const recon = { url: cfg.url, at: new Date().toISOString(), pages: {}, archive };
@@ -282,7 +284,7 @@ export async function capture(project, opts = {}) {
       for (const [name, vp] of Object.entries(cfg.viewports)) {
         info[name] = await visit(browser, store, cfg, target(pagePath), vp, {
           archive: archiveOpt,
-          renderedFile: path.join(p.rendered, `${fnv(pagePath)}-${name}.html`),
+          renderedFile: path.join(p.rendered, `${(pagePath.split("?")[0].replace(/^\/+|\/+$/g, "").replace(/[^a-z0-9]+/gi, "-") || "home").toLowerCase()}-${name}.html`),
         });
         ok(`${pagePath} at ${vp.width}×${vp.height}: ${info[name].height}px tall`);
       }
@@ -593,7 +595,7 @@ export function buildRewriter(cfg, pairs, remoteMedia = new Set(), archive = fal
 export async function fetchMissing(project, urls = []) {
   const { cfg, p } = project;
   const store = new HttpStore(p.cache);
-  const polite = new Polite(store, { interval: cfg.politeInterval, log: (m) => warn(m) });
+  const polite = new Polite(store, { interval: cfg.politeInterval, archive: cfg.captureMode === "archive", log: (m) => warn(m) });
   const ledger = JSON.parse(fs.existsSync(p.ledger) ? fs.readFileSync(p.ledger, "utf8") : "[]");
   const fromLog = fs.existsSync(p.missing) ? fs.readFileSync(p.missing, "utf8").split("\n").filter(Boolean) : [];
   const targets = new Set(urls);
@@ -681,7 +683,9 @@ async function sourceMaps(files, store, polite, p, opts) {
     json.sources.forEach((src, i) => {
       const content = json.sourcesContent[i];
       if (!content || /node_modules/.test(src)) return;
-      const clean = src.replace(/^[a-z]+:\/\/\/?/i, "").replace(/^(\.\.\/|\.\/)+/, "").replace(/[?#].*$/, "").replace(/[<>:"|*]/g, "_");
+      const clean = src.replace(/^[a-z]+:\/\/\/?/i, "").replace(/^(\.\.\/|\.\/)+/, "").replace(/[?#].*$/, "").replace(/[<>:"|*]/g, "_")
+        .split("/").filter((s) => s && s !== "." && s !== "..").join("/"); // never outside remake/sources/
+      if (!clean) return;
       writeFile(path.join(p.sources, host, clean), content);
       written++;
     });

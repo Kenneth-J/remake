@@ -10,7 +10,9 @@ export function accept(project, key, reason) {
   const { p, cfg } = project;
   const score = readJson(p.score);
   const v = score ? verdict(score, cfg) : { failing: [] };
-  const item = v.failing.find((f) => f.startsWith(key));
+  const keyOf = (f) => f.replace(/: [\d.]+%$/, "");
+  if (!key || !key.trim()) return say('Name the screen: remake accept "<screen>" --reason "…", exactly as the score lists it.');
+  const item = v.failing.find((f) => keyOf(f) === key.trim());
   if (!item) return say(`Nothing failing matches "${key}". Failing now:\n${v.failing.map((f) => "  - " + f).join("\n")}`);
   if (/height|not scored/.test(item)) return say("Height differences and unscored screens can't be accepted: fix them.");
   const pct = Number((/([\d.]+)%/.exec(item) || [])[1] || 0);
@@ -48,7 +50,10 @@ export function report(project) {
   let acceptedNow = [];
   if (score) {
     v = verdict(score, cfg);
-    acceptedNow = v.failing.filter((f) => accepted.some((a) => f.startsWith(a.key)));
+    // An accepted screen stays accepted only while it is the same screen and still at 90% or more.
+    const keyOf = (f) => f.replace(/: [\d.]+%$/, "");
+    const pctOf = (f) => Number((/([\d.]+)%$/.exec(f) || [])[1] || 0);
+    acceptedNow = v.failing.filter((f) => pctOf(f) >= 90 && accepted.some((a) => a.key === keyOf(f)));
     v.failing = v.failing.filter((f) => !acceptedNow.includes(f));
   }
   const low = (vp) => {
@@ -85,8 +90,10 @@ export function report(project) {
       .filter((l) => l.trim() && !/\s(REPORT\.md|\.gitignore)$/.test(l));
     const clean = changed.length === 0;
     const current = head === ship.commit && clean;
-    liveOk = ["yes", "checkpoint"].includes(ship.verified) && current;
-    liveEvidence = `${ship.url} · gate ${ship.verified === "yes" ? "verified" : ship.verified === "checkpoint" ? "behind Vercel's bot check, open it in a browser" : "not verified"}${current ? "" : " · changes since the last deploy"}`;
+    const isPrivate = !ship.visibility || ship.visibility === "PRIVATE";
+    const hidden = ship.verified !== "yes" || ship.check?.noindex;
+    liveOk = ["yes", "checkpoint"].includes(ship.verified) && current && isPrivate && hidden;
+    liveEvidence = `${ship.url} · gate ${ship.verified === "yes" ? "verified" : ship.verified === "checkpoint" ? "behind Vercel's bot check, open it in a browser to confirm" : "not verified"}${isPrivate ? "" : " · the repo is not private"}${hidden ? "" : " · search engines aren't told to stay away"}${current ? "" : " · changes since the last deploy"}`;
   }
   add("Live and private", liveOk, liveEvidence, "run `remake ship` (after the last change)");
 
@@ -97,10 +104,10 @@ export function report(project) {
     if (v.failing.length) lines.push("", "Still different:", ...v.failing.slice(0, 15).map((f) => `  - ${f}`));
     if (acceptedNow.length) {
       lines.push("", "Accepted differences (reason given):");
-      for (const f of acceptedNow) lines.push(`  - ${f}: ${accepted.find((a) => f.startsWith(a.key)).reason}`);
+      for (const f of acceptedNow) lines.push(`  - ${f}: ${accepted.find((a) => a.key === f.replace(/: [\d.]+%$/, "")).reason}`);
     }
   }
-  if (ship) lines.push("", `Live:     ${ship.url}`, `Passcode: ${ship.passcode}`, `Repo:     ${ship.repo} (private)`, `Proof:    ${ship.url}/_remake/`, `Swap:     ${ship.url}/_remake/swap/  ·  checklist: MAKE-IT-YOURS.md`);
+  if (ship) lines.push("", `Live:     ${ship.url}`, `Passcode: ${ship.passcode}`, `Repo:     ${ship.repo} (${(ship.visibility || "PRIVATE").toLowerCase()})`, `Proof:    ${ship.url}/_remake/`, `Swap:     ${ship.url}/_remake/swap/  ·  checklist: MAKE-IT-YOURS.md`);
   lines.push("");
   if (done) lines.push(acceptedNow.length ? `REMAKE COMPLETE (with ${acceptedNow.length} accepted difference${acceptedNow.length > 1 ? "s" : ""})` : "REMAKE COMPLETE");
   else lines.push("REMAKE NOT DONE", ...missing.map((m) => `  - ${m}`));

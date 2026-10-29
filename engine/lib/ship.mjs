@@ -1,4 +1,5 @@
 // Ship: a private GitHub repo and a live Vercel site behind a passcode, then check the gate works.
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
@@ -50,7 +51,7 @@ function moveReserved(root, site) {
 
 function makePasscode(name) {
   const word = name.replace(/[^a-z]/gi, "").toUpperCase().slice(0, 8) || "REMAKE";
-  return `${word}-${Math.floor(1000 + Math.random() * 9000)}`;
+  return `${word}-${crypto.randomBytes(6).toString("base64url")}`;
 }
 
 export async function verifyGate(url, passcode, pagePath = "/") {
@@ -90,7 +91,7 @@ export async function ship(project, opts = {}) {
   if (!score) warn("No score yet: shipping anyway, but the report won't pass until `remake score` passes.");
   else if (!score.pass) warn("The score doesn't pass yet. Shipping anyway so you can look at it; the report will say what's left.");
   copyTemplates(root, { name: cfg.name, url: cfg.url });
-  // A remade page that isn't the home page (/en, /space-service/): send the site's root to it.
+  // A remade page that isn't the home page (/en, /about/): send the site's root to it.
   const first = cfg.pages?.[0] || "/";
   if (first !== "/" && !fs.existsSync(path.join(p.site, "index.html"))) {
     fs.writeFileSync(path.join(p.site, "index.html"), `<!doctype html><meta charset="utf-8"><meta name="robots" content="noindex, nofollow"><meta http-equiv="refresh" content="0;url=${first}"><link rel="canonical" href="${first}"><title>Redirecting</title><a href="${first}">Continue</a>`);
@@ -180,9 +181,9 @@ export async function ship(project, opts = {}) {
     warn(`gate check: ${JSON.stringify(check)}`);
   }
   const head = sh("git", ["rev-parse", "HEAD"], { cwd: root }).stdout.trim();
-  const shipInfo = { name, scope, repo: repoUrl, url, deployment, passcode, verified, check, commit: head, at: new Date().toISOString() };
+  const shipInfo = { name, scope, repo: repoUrl, visibility, url, deployment, passcode, verified, check, commit: head, at: new Date().toISOString() };
   writeJson(p.ship, shipInfo);
-  say(`\n  Live:     ${url}\n  Passcode: ${passcode}\n  Repo:     ${repoUrl} (private)\n  Proof:    ${url}/_remake/\n  Swap:     ${url}/_remake/swap/`);
+  say(`\n  Live:     ${url}\n  Passcode: ${passcode}\n  Repo:     ${repoUrl} (${(visibility || "private").toLowerCase()})\n  Proof:    ${url}/_remake/\n  Swap:     ${url}/_remake/swap/`);
   say("\nNext: remake report");
   return shipInfo;
 }
