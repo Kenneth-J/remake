@@ -1,0 +1,9 @@
+node_modules/
+.vercel
+.DS_Store
+# Working files that are large or private: the response recording, raw screenshots, the passcode.
+remake/.cache/
+remake/original/
+remake/score/*.png
+remake/rendered/
+remake/ship.json

@@ -1,0 +1,22 @@
+{
+  "name": "remake",
+  "version": "0.1.0",
+  "description": "Remake any website pixel for pixel with Claude Code, ship it to your GitHub and Vercel, then make it yours.",
+  "type": "module",
+  "license": "MIT",
+  "author": "Ruben Hassid (How to AI)",
+  "homepage": "https://github.com/rubenhassid1/remake",
+  "repository": "github:rubenhassid1/remake",
+  "bin": { "remake": "engine/bin/remake.mjs" },
+  "files": ["engine"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "remake": "node engine/bin/remake.mjs",
+    "check": "node scripts/check.mjs"
+  },
+  "dependencies": {
+    "parse5": "^7.3.0",
+    "playwright": "^1.64.1",
+    "pngjs": "^7.0.0"
+  }
+}
