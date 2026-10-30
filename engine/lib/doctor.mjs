@@ -27,16 +27,33 @@ export async function doctor({ fix = false } = {}) {
   else if (!has("gh", ["auth", "status"]).ok) todo.push(["GitHub sign-in", "Run `gh auth login --web` and click through once in your browser."]);
   else ok("GitHub CLI, signed in");
 
+  // Either host's CLI will do for `remake ship --host vercel|cloudflare`; only nag about both if neither is installed.
   let vercel = has("vercel");
   if (!vercel.ok && fix) {
     say("  installing Vercel CLI…");
     spawnSync("npm", ["install", "-g", "vercel"], { stdio: "inherit" });
     vercel = has("vercel");
   }
-  if (!vercel.ok) todo.push(["Vercel CLI", "Run `npm install -g vercel`."]);
-  else {
+  let wrangler = has("wrangler");
+  if (!wrangler.ok && fix && !vercel.ok) {
+    say("  installing Wrangler (Cloudflare's CLI)…");
+    spawnSync("npm", ["install", "-g", "wrangler"], { stdio: "inherit" });
+    wrangler = has("wrangler");
+  }
+  if (!vercel.ok && !wrangler.ok) {
+    todo.push(["Vercel CLI or Wrangler", "Run `npm install -g vercel` or `npm install -g wrangler`, whichever you deploy with."]);
+  } else if (vercel.ok) {
     const who = has("vercel", ["whoami"]);
     who.ok ? ok(`Vercel CLI, signed in as ${who.out.split("\n").pop()}`) : todo.push(["Vercel sign-in", "Run `vercel login` and click through once in your browser."]);
+    if (wrangler.ok) {
+      const ww = has("wrangler", ["whoami"]);
+      if (ww.ok && !/not authenticated|not logged in/i.test(ww.out)) ok(`Wrangler, signed in (${ww.out.trim().split("\n").filter(Boolean).pop()})`);
+    }
+  } else {
+    const ww = has("wrangler", ["whoami"]);
+    ww.ok && !/not authenticated|not logged in/i.test(ww.out)
+      ? ok(`Wrangler, signed in (${ww.out.trim().split("\n").filter(Boolean).pop()})`)
+      : todo.push(["Cloudflare sign-in", "Run `wrangler login` and click through once in your browser."]);
   }
 
   let browserOk = false;
