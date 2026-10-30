@@ -5,7 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { copyTemplates, TEMPLATES } from "./project.mjs";
 import { MOVED_IMMUTABLE } from "./serve.mjs";
-import { RemakeError, say, ok, warn, step, readJson, writeJson } from "./util.mjs";
+import { RemakeError, say, ok, warn, step, readJson, writeJson, walk } from "./util.mjs";
 
 export function sh(cmd, args, { cwd, input, allowFail = false } = {}) {
   const r = spawnSync(cmd, args, { cwd, input, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
@@ -56,6 +56,49 @@ function installCloudflareMiddleware(root) {
   const dir = path.join(root, "functions");
   fs.mkdirSync(dir, { recursive: true });
   fs.copyFileSync(path.join(TEMPLATES, "cloudflare", "_middleware.js"), path.join(dir, "_middleware.js"));
+}
+
+const CF_FILE_LIMIT = 25 * 1024 * 1024; // Cloudflare Pages' hard per-file cap
+
+// Cloudflare Pages refuses any single file over 25 MiB (remakes routinely capture bigger videos
+// than that). Move oversized files out of the deploy for a moment and 302 them to the URL they
+// were captured from (remake/ledger.json); restore everything right after, win or lose, so
+// `site/` itself stays the full, faithful capture for score/serve/Vercel.
+function withCloudflareSizeLimit(root, p, cfg, fn) {
+  const big = walk(p.site, (f) => fs.statSync(f).size > CF_FILE_LIMIT);
+  if (!big.length) return fn();
+
+  const ledger = readJson(p.ledger, []) || [];
+  const originals = new Map(ledger.filter((e) => e.local && e.url).map((e) => [e.local, e.url]));
+  const tmp = path.join(root, ".cloudflare-oversized");
+  const redirectsFile = path.join(p.site, "_redirects");
+  const hadRedirects = fs.existsSync(redirectsFile);
+  const prevRedirects = hadRedirects ? fs.readFileSync(redirectsFile, "utf8") : "";
+  const moved = [];
+  const lines = [];
+  for (const file of big) {
+    const webPath = "/" + path.relative(p.site, file).split(path.sep).join("/");
+    const mib = (fs.statSync(file).size / (1024 * 1024)).toFixed(0);
+    const originalUrl = originals.get(webPath) || new URL(webPath, cfg.origin).href;
+    const backup = path.join(tmp, webPath);
+    fs.mkdirSync(path.dirname(backup), { recursive: true });
+    fs.renameSync(file, backup);
+    moved.push({ from: backup, to: file });
+    lines.push(`${webPath}  ${originalUrl}  302`);
+    warn(`${webPath} is ${mib} MiB, over Cloudflare Pages' 25 MiB file limit; it'll redirect to the original instead of being served from your copy`);
+  }
+  fs.writeFileSync(redirectsFile, (hadRedirects ? prevRedirects + "\n" : "") + lines.join("\n") + "\n");
+  try {
+    return fn();
+  } finally {
+    for (const { from, to } of moved) {
+      fs.mkdirSync(path.dirname(to), { recursive: true });
+      fs.renameSync(from, to);
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+    if (hadRedirects) fs.writeFileSync(redirectsFile, prevRedirects);
+    else fs.rmSync(redirectsFile, { force: true });
+  }
 }
 
 function makePasscode(name) {
@@ -160,8 +203,17 @@ export async function ship(project, opts = {}) {
   if (host === "cloudflare") {
     step("Deploying to Cloudflare Pages behind a passcode");
     sh("wrangler", ["pages", "project", "create", name, "--production-branch", "main"], { cwd: root, allowFail: true });
-    sh("wrangler", ["pages", "secret", "put", "REMAKE_PASSCODE", "--project-name", name], { cwd: root, input: passcode });
-    const dep = sh("wrangler", ["pages", "deploy", "site", "--project-name", name, "--branch", "main", "--commit-dirty"], { cwd: root, allowFail: true });
+    // Cloudflare's API can take a moment to see a project it just created; retry past that lag.
+    let secret;
+    for (let attempt = 1; attempt <= 5; attempt++) {
+      secret = sh("wrangler", ["pages", "secret", "put", "REMAKE_PASSCODE", "--project-name", name], { cwd: root, input: passcode, allowFail: true });
+      if (secret.ok || !/does not exist/i.test(secret.out)) break;
+      await new Promise((r) => setTimeout(r, attempt * 1500));
+    }
+    if (!secret.ok) throw new RemakeError(`wrangler pages secret put failed:\n${secret.out.trim().slice(-1500)}`);
+    const dep = withCloudflareSizeLimit(root, p, cfg, () =>
+      sh("wrangler", ["pages", "deploy", "site", "--project-name", name, "--branch", "main", "--commit-dirty"], { cwd: root, allowFail: true }),
+    );
     if (!dep.ok) throw new RemakeError(`wrangler pages deploy failed:\n${dep.out.trim().slice(-1500)}`);
     const urls = [...dep.out.matchAll(/https:\/\/[^\s"'\]]+\.pages\.dev/g)].map((m) => m[0]);
     deployment = urls.find((u) => !u.startsWith(`https://${name}.`)) || urls[0];
