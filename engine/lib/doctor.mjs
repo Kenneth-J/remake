@@ -27,18 +27,14 @@ export async function doctor({ fix = false } = {}) {
   else if (!has("gh", ["auth", "status"]).ok) todo.push(["GitHub sign-in", "Run `gh auth login --web` and click through once in your browser."]);
   else ok("GitHub CLI, signed in");
 
-  // Either host's CLI will do for `remake ship --host vercel|cloudflare`; only nag about both if neither is installed.
+  // Either host's CLI will do for `remake ship --host vercel|cloudflare`; only install one (vercel, by
+  // default) if `--fix` is on and neither is already present — never install a second one you don't need.
   let vercel = has("vercel");
-  if (!vercel.ok && fix) {
+  let wrangler = has("wrangler");
+  if (!vercel.ok && !wrangler.ok && fix) {
     say("  installing Vercel CLI…");
     spawnSync("npm", ["install", "-g", "vercel"], { stdio: "inherit" });
     vercel = has("vercel");
-  }
-  let wrangler = has("wrangler");
-  if (!wrangler.ok && fix && !vercel.ok) {
-    say("  installing Wrangler (Cloudflare's CLI)…");
-    spawnSync("npm", ["install", "-g", "wrangler"], { stdio: "inherit" });
-    wrangler = has("wrangler");
   }
   if (!vercel.ok && !wrangler.ok) {
     todo.push(["Vercel CLI or Wrangler", "Run `npm install -g vercel` or `npm install -g wrangler`, whichever you deploy with."]);
@@ -57,21 +53,29 @@ export async function doctor({ fix = false } = {}) {
   }
 
   let browserOk = false;
-  try {
-    const b = await chromium.launch();
-    await b.close();
-    browserOk = true;
-  } catch {}
-  if (!browserOk && fix) {
-    say("  downloading Chromium for Playwright (about 150 MB, once)…");
-    spawnSync("npx", ["playwright", "install", "chromium"], { stdio: "inherit", cwd: ENGINE_ROOT });
+  let viaChrome = false;
+  const tryLaunch = async () => {
     try {
       const b = await chromium.launch();
       await b.close();
-      browserOk = true;
+      return true;
     } catch {}
+    try {
+      const b = await chromium.launch({ channel: "chrome" });
+      await b.close();
+      viaChrome = true;
+      return true;
+    } catch {}
+    return false;
+  };
+  browserOk = await tryLaunch();
+  if (!browserOk && fix) {
+    say("  downloading Chromium for Playwright (about 150 MB, once)…");
+    spawnSync("npx", ["playwright", "install", "chromium"], { stdio: "inherit", cwd: ENGINE_ROOT });
+    browserOk = await tryLaunch();
   }
-  browserOk ? ok("Chromium for Playwright") : todo.push(["Chromium for Playwright", "Run `remake doctor --fix`."]);
+  if (browserOk) ok(viaChrome ? "Chromium for Playwright (via installed Google Chrome; Playwright's own build doesn't run on this OS)" : "Chromium for Playwright");
+  else todo.push(["Chromium for Playwright", "Run `remake doctor --fix`, or install Google Chrome if that fails."]);
 
   if (!todo.length) {
     say("\nREADY: everything Remake needs is installed and signed in.");
